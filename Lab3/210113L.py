@@ -47,4 +47,6 @@ cv2.imwrite("restored_image.jpg", restored_image)
 # Compute MSE
 squared_diff = (gray_image.astype(np.float32) - restored_image.astype(np.float32)) ** 2
 mse = np.mean(squared_diff)
+with open("mse_output.txt", "w") as f:
+    f.write(f"MSE between original and restored image: {mse}\n")
 print("Mean Squared Error (MSE):", mse)
