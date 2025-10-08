@@ -1,58 +1,31 @@
 import numpy as np
 import cv2 as cv
 
-def apply_gaussian_blur(image, kernel_size):
-    def gaussian_kernel(size, sigma):
-        kernel = np.fromfunction(
-            lambda x, y: (1/ (2 * np.pi * sigma ** 2)) * 
-                          np.exp(- ((x - (size-1)/2) ** 2 + (y - (size-1)/2) ** 2) / (2 * sigma ** 2)),
-            (size, size)
-        )
-        return kernel / np.sum(kernel)
-
-    # Ensure the kernel size is odd for symmetry
-    if kernel_size % 2 == 0:
-        kernel_size += 1
-
-    # Generate the Gaussian kernel
-    kernel = gaussian_kernel(kernel_size, sigma=1.0)
-
-    # Get the dimensions of the image
+def gaussian_filter(image):
+    kernel = np.array([
+        [1,  4,  6,  4, 1],
+        [4, 16, 24, 16, 4],
+        [6, 24, 36, 24, 6],
+        [4, 16, 24, 16, 4],
+        [1,  4,  6,  4, 1]
+    ], dtype=np.float64)
+    kernel = kernel / np.sum(kernel)  # Normalize
     rows, cols = image.shape
+    k_half = 2  # For 5x5 kernel
+    output = np.zeros_like(image)
 
-    # Get the half-size of the kernel for padding
-    k_half = kernel_size // 2
-
-    # Create an output image with the same dimensions as the input
-    output = np.zeros_like(image) 
-
-    # Apply the Gaussian blur by convolving the image with the kernel
     for i in range(k_half, rows - k_half):
         for j in range(k_half, cols - k_half):
             output[i, j] = np.sum(image[i - k_half: i + k_half + 1, j - k_half: j + k_half + 1] * kernel)
 
-    # get the image without the padding
     return output[k_half:rows-k_half, k_half:cols-k_half]
 
 
-def compute_gradient_magnitude_and_orientation(image, sobel_kernel_size):
-
-    if sobel_kernel_size == 3:
-        # Define Sobel kernels (3x3)
-        sobel_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-        sobel_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
-
-    elif sobel_kernel_size == 5:
-        sobel_x = np.array([[-1, -2, 0, 2, 1], [-2, -3, 0, 3, 2], [-3, -5, 0, 5, 3], [-2, -3, 0, 3, 2], [-1, -2, 0, 2, 1]])
-        sobel_y = np.array([[-1, -2, -3, -2, -1], [-2, -3, -5, -3, -2], [0, 0, 0, 0, 0], [2, 3, 5, 3, 2], [1, 2, 3, 2, 1]])
-    else:
-        print("Sobel kernel size should be 3 or 5!")
-        exit(1)
-
-    # Get the dimensions of the image
+def gradient_estimation(image):
+    sobel_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    sobel_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+    sobel_kernel_size = 3
     rows, cols = image.shape
-
-    # Initialize arrays for gradient magnitude and orientation
     gradient_x = np.zeros_like(image, dtype=np.float64)
     gradient_y = np.zeros_like(image, dtype=np.float64)
 
@@ -70,9 +43,8 @@ def compute_gradient_magnitude_and_orientation(image, sobel_kernel_size):
 
     return magnitude, orientation
 
-def apply_non_max_suppression(magnitude, orientation):
+def non_maxima_suppression(magnitude, orientation):
     # Apply non-maximum suppression to the gradient magnitude
-    # This will thin the edges by keeping only the local maxima
     suppressed_magnitude = np.copy(magnitude)
     rows, cols = magnitude.shape
     
@@ -99,11 +71,11 @@ def apply_non_max_suppression(magnitude, orientation):
     return suppressed_magnitude
 
 
-def apply_edge_tracking_by_hysteresis(magnitude, low_threshold, high_threshold):
+def double_threshold(magnitude, low_threshold, high_threshold):
     # Apply edge tracking by hysteresis to detect strong and weak edges
     rows, cols = magnitude.shape
     edge_map = np.zeros((rows, cols), dtype=np.uint8)
-    
+
     strong_edge_i, strong_edge_j = np.where(magnitude >= high_threshold)
     weak_edge_i, weak_edge_j = np.where((magnitude >= low_threshold) & (magnitude < high_threshold))
     
@@ -118,12 +90,12 @@ def apply_edge_tracking_by_hysteresis(magnitude, low_threshold, high_threshold):
     return edge_map
 
 img = cv.imread('img.jpg', cv.IMREAD_GRAYSCALE)
-cv.imwrite('1.grayscale.jpg', img)
-blurred_img = apply_gaussian_blur(img, kernel_size=5)
+cv.imwrite('0.grayscale.jpg', img)
+blurred_img = gaussian_filter(img)
 cv.imwrite('1.blurred.jpg', blurred_img)
-magnitude, orientation = compute_gradient_magnitude_and_orientation(blurred_img, sobel_kernel_size=3)
+magnitude, orientation = gradient_estimation(blurred_img)
 cv.imwrite('2.magnitude.jpg', magnitude)
-nms_magnitude = apply_non_max_suppression(magnitude, orientation)
+nms_magnitude = non_maxima_suppression(magnitude, orientation)
 cv.imwrite('3.nms_magnitude.jpg', nms_magnitude)
-edges = apply_edge_tracking_by_hysteresis(nms_magnitude, low_threshold=20, high_threshold=40)
-cv.imwrite('edges.jpg', edges)
+edges = double_threshold(nms_magnitude, low_threshold=20, high_threshold=60)
+cv.imwrite('4.edges.jpg', edges)

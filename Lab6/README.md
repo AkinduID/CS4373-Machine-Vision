@@ -11,7 +11,7 @@ The Canny edge detector is a multi-step process for identifying edges in images:
 Load the original image and convert it to grayscale to simplify processing.
 <div class="image-container">
   <img src="img.jpg" width="300" alt="Source Image" />
-    <img src="1.blurred.jpg" width="300" alt="Source Image" />
+    <img src="0.grayscale.jpg" width="300" alt="Source Image" />
 </div>
 
 **Step 1: Noise Reduction**
@@ -39,5 +39,5 @@ Thin out the edges by keeping only the pixels with the highest gradient magnitud
 
 Apply two thresholds (high and low) to classify strong and weak edges. Strong edges are kept, and weak edges are included only if they are connected to strong edges, ensuring continuous edge lines.
 <div class="image-container">
-  <img src="edges.jpg" width="300" alt="Source Image" />
+  <img src="4.edges.jpg" width="300" alt="Source Image" />
 </div>
